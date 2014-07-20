@@ -1,20 +1,103 @@
-# Reproducible Research: Peer Assessment 1
+Peer Assessment 1 for Reproducible Research
+===========================================
 
+Introduction
+------------
 
-## Loading and preprocessing the data
+It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a Fitbit, Nike Fuelband, or Jawbone Up. These type of devices are part of the "quantified self" movement -- a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.
 
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
 
+Data
+----
 
-## What is mean total number of steps taken per day?
+The data for this assignment can be downloaded from the course web site:
 
+Dataset: [Activity monitoring data](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip) [52K]
 
+The variables included in this dataset are:
 
-## What is the average daily activity pattern?
+- steps: Number of steps taking in a 5-minute interval (missing values are coded as NA)
+- date: The date on which the measurement was taken in YYYY-MM-DD format
+- interval: Identifier for the 5-minute interval in which measurement was taken
 
+The dataset is stored in a comma-separated-value (CSV) file and there are a total of 17,568 observations in this dataset.
 
+### Load and preprocess the activity data.
 
-## Imputing missing values
+Download and unzip the activity data to the assignment folder. 
 
+```{r}
+csvfile <- "/users/rsusvilla/documents/coursera/ReproducibleResearch/RepData_PeerAssessment1/activity.csv"
+activity <- read.csv(csvfile, header=T, sep=",")
+str(activity)
+```
 
+### What is the mean total number of steps taken per day?
 
-## Are there differences in activity patterns between weekdays and weekends?
+Prepare a histogram showing the total number of steps taken each day.  Then show the mean and median total number of steps taken each day. 
+
+```{r fig.path="/users/rsusvilla/documents/coursera/ReproducibleResearch/RepData_PeerAssessment1/figures/histogram1-"}
+totalperday <- aggregate(steps~date, activity, sum)
+hist(totalperday$steps, xlab="Total Steps per Day", col="green", main="")
+mean(totalperday$steps)
+median(totalperday$steps)
+```
+
+### What is the average daily activity pattern?
+
+Prepare a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis).  Then show which 5-minute interval has the maximum number of steps on average across all days.
+
+```{r fig.path="/users/rsusvilla/documents/coursera/ReproducibleResearch/figures/plot1-"}
+DateTime <- strptime(paste(activity$date," ",sprintf("%04d",activity$interval)),"%Y-%m-%d %H%M")
+Avg5min <- aggregate(steps~interval, activity, mean)
+plot(strptime(sprintf("%04d",Avg5min$interval),"%H%M"), Avg5min$steps, type="l", ylab="Average Steps", xlab="Time of Day")
+subset(Avg5min, steps == max(Avg5min$steps))
+```
+
+### Imputing missing values.
+
+Calculate and report the total number of missing values in the dataset.
+
+```{r}
+sapply(activity, function(x) sum(is.na(x)))
+```
+
+Fill in the missing values with the mean for that 5 minute interval.
+
+```{r warning="FALSE"}
+mergedAvg <- merge(activity, Avg5min, by="interval")
+colnames(mergedAvg) <- c("interval", "steps", "date", "avgsteps")
+mergedAvg$steps[is.na(mergedAvg$steps)] <- mergedAvg$avgsteps
+filledActivity <- mergedAvg[order(mergedAvg$date, mergedAvg$interval),]
+## newAvg5min <- aggregate(steps~interval, filledActivity, mean)
+## plot(strptime(sprintf("%04d",newAvg5min$interval),"%H%M"), newAvg5min$steps, type="l", ylab="Average Steps", xlab="Time of Day")
+```
+
+After filling in the missing data, make a histogram of the total number of steps taken each day and calculate and report the mean and median total number of steps taken per day.
+
+```{r fig.path="/users/rsusvilla/documents/coursera/ReproducibleResearch/RepData_PeerAssessment1/figures/histogram2-"}
+totalperday <- aggregate(steps~date, filledActivity, sum)
+hist(totalperday$steps, xlab="Total Steps per Day", col="green", main="")
+mean(totalperday$steps)
+median(totalperday$steps)
+```
+
+Results show that the mean and median of the total steps per day has **decreased** after imputing the missing values with the mean of the 5 minute intervals.  
+
+### Are there differences in activity patterns between weekdays and weekends?
+
+```{r warning="FALSE",fig.path="/users/rsusvilla/documents/coursera/ReproducibleResearch/RepData_PeerAssessment1/figures/plot2-"}
+library(chron)
+DateTime <- strptime(paste(filledActivity$date," ",sprintf("%04d",activity$interval)),"%Y-%m-%d %H%M")
+weektype <- is.weekend(DateTime)
+weektype[weektype == TRUE] <- "Weekend"
+weektype[weektype == FALSE] <- "Weekday"
+## weektype <- factor(weektype)
+Avg5min <- aggregate(steps ~ weektype + interval, filledActivity, mean)
+Avg5min$weektype <- factor(Avg5min$weektype)
+library(ggplot2)
+qplot(interval, steps, data=Avg5min, facets=. ~ weektype, geom="line")
+```
+
+**The charts above show the differences between the weekday and weekend activity patterns.  The weekday pattern shows more activity during two distinct times of day, during the morning and early evening.  The weekend pattern shows a more constant activity pattern during the day.**
