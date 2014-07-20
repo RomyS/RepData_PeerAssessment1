@@ -36,54 +36,68 @@ str(activity)
 ### What is the mean total number of steps taken per day?
 
 Prepare a histogram showing the total number of steps taken each day.  Then show the mean and median total number of steps taken each day. 
-
 ```{r fig.path="/users/rsusvilla/documents/coursera/ReproducibleResearch/RepData_PeerAssessment1/figures/histogram1-"}
 totalperday <- aggregate(steps~date, activity, sum)
 hist(totalperday$steps, xlab="Total Steps per Day", col="green", main="")
+```
+
+Mean of total number of steps taken each day.
+```{r}
 mean(totalperday$steps)
+```
+
+Median of total number of steps taken each day.
+```{r}
 median(totalperday$steps)
 ```
 
 ### What is the average daily activity pattern?
 
-Prepare a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis).  Then show which 5-minute interval has the maximum number of steps on average across all days.
-
+Prepare a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis). 
 ```{r fig.path="/users/rsusvilla/documents/coursera/ReproducibleResearch/figures/plot1-"}
 DateTime <- strptime(paste(activity$date," ",sprintf("%04d",activity$interval)),"%Y-%m-%d %H%M")
 Avg5min <- aggregate(steps~interval, activity, mean)
 plot(strptime(sprintf("%04d",Avg5min$interval),"%H%M"), Avg5min$steps, type="l", ylab="Average Steps", xlab="Time of Day")
+```
+
+Maximum number of steps on average across all days.
+```{r}
 subset(Avg5min, steps == max(Avg5min$steps))
 ```
+**The above shows that the maximum number of steps across all days occurred at 8:35 in the morning.**
 
 ### Imputing missing values.
 
 Calculate and report the total number of missing values in the dataset.
-
 ```{r}
 sapply(activity, function(x) sum(is.na(x)))
 ```
 
-Fill in the missing values with the mean for that 5 minute interval.
-
-```{r warning="FALSE"}
+Fill in the missing values in the steps variable with the mean of the steps for that 5 minute interval across all days.
+```{r warning=FALSE}
 mergedAvg <- merge(activity, Avg5min, by="interval")
 colnames(mergedAvg) <- c("interval", "steps", "date", "avgsteps")
 mergedAvg$steps[is.na(mergedAvg$steps)] <- mergedAvg$avgsteps
 filledActivity <- mergedAvg[order(mergedAvg$date, mergedAvg$interval),]
-## newAvg5min <- aggregate(steps~interval, filledActivity, mean)
-## plot(strptime(sprintf("%04d",newAvg5min$interval),"%H%M"), newAvg5min$steps, type="l", ylab="Average Steps", xlab="Time of Day")
 ```
 
 After filling in the missing data, make a histogram of the total number of steps taken each day and calculate and report the mean and median total number of steps taken per day.
-
 ```{r fig.path="/users/rsusvilla/documents/coursera/ReproducibleResearch/RepData_PeerAssessment1/figures/histogram2-"}
 totalperday <- aggregate(steps~date, filledActivity, sum)
 hist(totalperday$steps, xlab="Total Steps per Day", col="green", main="")
+```
+
+Mean of total number of steps taken each day after filling in missing data.
+```{r}
 mean(totalperday$steps)
+```
+
+Median of total number of steps taken each day after filling in missing data.
+```{r}
 median(totalperday$steps)
 ```
 
-Results show that the mean and median of the total steps per day has **decreased** after imputing the missing values with the mean of the 5 minute intervals.  
+**Results show that the mean and median of the total steps per day has decreased after imputing the missing values with the mean of the 5 minute intervals.**   
 
 ### Are there differences in activity patterns between weekdays and weekends?
 
@@ -93,11 +107,10 @@ DateTime <- strptime(paste(filledActivity$date," ",sprintf("%04d",activity$inter
 weektype <- is.weekend(DateTime)
 weektype[weektype == TRUE] <- "Weekend"
 weektype[weektype == FALSE] <- "Weekday"
-## weektype <- factor(weektype)
 Avg5min <- aggregate(steps ~ weektype + interval, filledActivity, mean)
 Avg5min$weektype <- factor(Avg5min$weektype)
 library(ggplot2)
-qplot(interval, steps, data=Avg5min, facets=. ~ weektype, geom="line")
+qplot(interval, steps, data=Avg5min, facets=. ~ weektype, geom="line", ylab="average steps", xlab="intervals")
 ```
 
 **The charts above show the differences between the weekday and weekend activity patterns.  The weekday pattern shows more activity during two distinct times of day, during the morning and early evening.  The weekend pattern shows a more constant activity pattern during the day.**
